@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spatial Crowdsourcing — Gale-Shapley Matching Platform</title>
+  <meta name="description" content="Interactive Gale-Shapley Stable Marriage Matching Platform for Spatial Crowdsourcing task assignment.">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=10">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen" class="screen">
+        <div class="auth-floating-play">
+            <div class="demo-btn-container" style="position: relative; display: inline-block;">
+                <a href="demo.html" class="btn-demo-play" style="display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: var(--accent-purple); color: white; border: none; cursor: pointer; text-decoration: none; transition: all 0.3s ease; overflow: hidden; white-space: nowrap;">
+                    <svg style="flex-shrink: 0;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                    <span class="demo-text" style="display: none; margin-left: 8px; font-weight: 600; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s ease;">View Demo</span>
+                </a>
+            </div>
+        </div>
+        <div class="auth-header">
+            <h2>Spatial Matching Platform</h2>
+            <p>Gale-Shapley Stable Marriage Task Assignment</p>
+        </div>
+        <div class="auth-form">
+            <div class="input-group">
+                <input type="email" id="email" placeholder="Email Address (e.g. requester_a@example.com)" required>
+            </div>
+            <div class="input-group">
+                <input type="password" id="password" placeholder="Password" required>
+            </div>
+            <div class="input-group">
+                <select id="role-select" onchange="toggleWorkerProfessionField(this.value)">
+                    <option value="" disabled selected>Select your Role...</option>
+                    <option value="requester">Requester (Post Tasks & Rank Workers)</option>
+                    <option value="worker">Worker (Register Profession & Rank Tasks)</option>
+                    <option value="admin">Administrator (Gale-Shapley Simulation Engine)</option>
+                </select>
+            </div>
+
+            <!-- Worker Profession Field -->
+            <div class="input-group" id="worker-profession-group" style="display: none;">
+                <label style="font-size:0.75rem; font-weight:600; color:var(--accent-blue); display:block; margin-bottom:4px; text-align:left;">Select your Profession:</label>
+                <select id="worker-register-job-type" onchange="document.getElementById('worker-register-job-custom').style.display = this.value === 'Other' ? 'block' : 'none';">
+                    <option value="Plumber" selected>Plumber</option>
+                    <option value="Electrician">Electrician</option>
+                    <option value="Carpenter">Carpenter</option>
+                    <option value="Cleaner">Cleaner</option>
+                    <option value="Mechanic">Mechanic</option>
+                    <option value="Painter">Painter</option>
+                    <option value="Other">Other Profession...</option>
+                </select>
+                <input type="text" id="worker-register-job-custom" placeholder="Specify Custom Profession" style="display:none; margin-top:8px;">
+            </div>
+
+            <button id="btn-login" class="btn btn-primary auth-btn">Log In</button>
+            <button id="btn-register" class="btn btn-secondary auth-btn">Create Account</button>
+        </div>
+        <div id="auth-error"></div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div id="app-container" style="display: none;">
+        <!-- HEADER -->
+        <header id="app-header">
+            <div class="header-left">
+                <h1>Spatial Crowdsourcing <span class="header-separator">—</span> Stable Marriage Algorithm</h1>
+                <p class="subtitle">Interactive Gale-Shapley Algorithm Visualization</p>
+            </div>
+            <div class="header-right">
+                <span id="user-info"></span>
+                <span id="algorithm-status-badge" class="status-badge status-ready hidden">Ready</span>
+                
+                <div class="demo-btn-container" style="position: relative; display: inline-block;">
+                    <a href="demo.html" class="btn-demo-play" style="display: flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: var(--accent-purple); color: white; border: none; cursor: pointer; text-decoration: none; transition: all 0.3s ease; overflow: hidden; white-space: nowrap;">
+                        <svg style="flex-shrink: 0;" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        <span class="demo-text" style="display: none; margin-left: 8px; font-weight: 600; font-size: 0.85rem; opacity: 0; transition: opacity 0.3s ease;">View Demo</span>
+                    </a>
+                </div>
+
+                <button id="btn-theme" class="header-icon-btn" aria-label="Toggle Theme" title="Toggle Theme">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="moon-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                </button>
+                <button id="btn-logout" class="header-icon-btn" aria-label="Logout" title="Logout">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- ================= REQUESTER DASHBOARD ================= -->
+        <div id="requester-dashboard" class="role-dashboard hidden">
+            <h2>Requester Dashboard</h2>
+            <p>Post service tasks, view eligible profession workers, and create your preference ranking list.</p>
+            
+            <div class="cards-container">
+                <div class="dashboard-card">
+                    <h3>Create Service Task</h3>
+                    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>Task Location (X, Y from 0-800)</span>
+                        <button id="btn-randomize-task" class="btn btn-secondary" style="width: auto; padding: 4px 12px; font-size: 0.75rem; margin: 0;">🎲 Randomize</button>
+                    </div>
+                    <input type="number" id="task-x" placeholder="Enter X coordinate (e.g. 200)" min="0" max="800">
+                    <input type="number" id="task-y" placeholder="Enter Y coordinate (e.g. 180)" min="0" max="600">
+                    
+                    <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-top:10px; display:block;">Service Category / Profession</label>
+                    <select id="task-type" onchange="document.getElementById('task-type-custom').style.display = this.value === 'Other' ? 'block' : 'none';">
+                        <option value="Plumber">Plumber</option>
+                        <option value="Electrician">Electrician</option>
+                        <option value="Carpenter">Carpenter</option>
+                        <option value="Cleaner">Cleaner</option>
+                        <option value="Mechanic">Mechanic</option>
+                        <option value="Painter">Painter</option>
+                        <option value="Other">Other...</option>
+                    </select>
+                    <input type="text" id="task-type-custom" placeholder="Specify Job Type" style="display:none;">
+                    <button id="btn-create-task" class="btn btn-primary">Post Task</button>
+                    <div id="task-msg"></div>
+
+                    <div class="info-banner" style="margin-top:20px;">
+                        💡 <strong>How It Works:</strong> Once posted, only eligible workers in that profession will appear in your preference list. You can reorder workers (1st, 2nd, 3rd choice) before the matching algorithm executes.
+                    </div>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>Your Active Tasks & Worker Rankings</h3>
+                    <ul id="requester-tasks-list"></ul>
+                    
+                    <h3 style="margin-top: 25px;">Completed Tasks</h3>
+                    <ul id="requester-completed-tasks-list"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= WORKER DASHBOARD ================= -->
+        <div id="worker-dashboard" class="role-dashboard hidden">
+            <h2>Worker Dashboard</h2>
+            <p>Set your profession, browse matching category tasks, and submit your task preference ranking.</p>
+            
+            <div class="cards-container">
+                <div class="dashboard-card">
+                    <h3>Worker Profile</h3>
+                    <div class="profile-stats">
+                        <div class="stat-box">
+                            <div class="stat-val" id="worker-rating">0.0</div>
+                            <div class="stat-label">★ Rating</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="stat-val" id="worker-experience">0</div>
+                            <div class="stat-label">Completed Jobs</div>
+                        </div>
+                    </div>
+                    
+                    <h3 style="margin-top:15px;">Profession & Location</h3>
+                    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between;">
+                        <span>Current Location (X, Y)</span>
+                        <button id="btn-randomize-worker" class="btn btn-secondary" style="width: auto; padding: 4px 12px; font-size: 0.75rem; margin: 0;">🎲 Randomize</button>
+                    </div>
+                    <input type="number" id="worker-x" placeholder="Enter X coordinate" min="0" max="800">
+                    <input type="number" id="worker-y" placeholder="Enter Y coordinate" min="0" max="600">
+                    
+                    <label style="font-size:0.8rem; font-weight:600; color:var(--text-muted); margin-top:10px; display:block;">Registered Profession</label>
+                    <select id="worker-job-type" onchange="document.getElementById('worker-job-custom').style.display = this.value === 'Other' ? 'block' : 'none';">
+                        <option value="Plumber">Plumber</option>
+                        <option value="Electrician">Electrician</option>
+                        <option value="Carpenter">Carpenter</option>
+                        <option value="Cleaner">Cleaner</option>
+                        <option value="Mechanic">Mechanic</option>
+                        <option value="Painter">Painter</option>
+                        <option value="Other">Other...</option>
+                    </select>
+                    <input type="text" id="worker-job-custom" placeholder="Specify Job Type" style="display:none;">
+                    
+                    <label style="display: block; margin: 15px 0 10px 0;">
+                        <input type="checkbox" id="worker-available" checked> Available for tasks
+                    </label>
+
+                    <button id="btn-update-worker" class="btn btn-primary">Update Profile</button>
+                    <div id="worker-msg"></div>
+
+                    <div class="info-banner" style="margin-top:20px;">
+                        📌 <strong>Profession Filter:</strong> You only receive tasks matching your profession (e.g. Plumbers only receive Plumbing tasks).
+                    </div>
+                </div>
+                
+                <div class="dashboard-card">
+                    <h3>Active Stable Assignment</h3>
+                    <div id="worker-assigned-task"></div>
+
+                    <h3 style="margin-top:20px;">Eligible Profession Tasks & Your Preferences</h3>
+                    <div class="info-banner">
+                        ⚠️ <strong>Gale-Shapley Rule:</strong> Reordering tasks sets your preference ranking. The final stable assignment is computed by the Gale-Shapley algorithm executed by the Administrator.
+                    </div>
+                    <div id="worker-eligible-tasks-container"></div>
+                    
+                    <h3 style="margin-top: 25px;">Completed Tasks History</h3>
+                    <ul id="worker-completed-tasks-list"></ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= ADMIN DASHBOARD ================= -->
+        <div id="admin-dashboard" class="dashboard hidden">
+            <!-- Left Panel: Controls & Scenario -->
+            <aside id="controls-panel" class="panel" style="overflow-y: auto;">
+                <h2 class="panel-header" style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 15px; letter-spacing: 1px;">SIMULATION CONTROLS</h2>
+                
+                <!-- Quick Demo Scenario Loader -->
+                <section class="control-section" style="margin-bottom: 15px; background: rgba(167, 139, 250, 0.1); border: 1px solid var(--accent-purple); padding: 12px; border-radius: 8px;">
+                    <h3 style="font-size: 0.8rem; color: var(--accent-purple); margin-bottom: 6px;">⚡ STANDARD DEMO SCENARIO</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 10px; line-height: 1.3;">
+                        Loads 3 Plumbing Tasks (Requester A, B, C) and 4 Plumbers (Worker 1, 2, 3, 4) with predefined preference rankings.
+                    </p>
+                    <button id="btn-load-demo" class="btn btn-primary" style="width: 100%; justify-content: center; font-size: 0.8rem; padding: 6px 12px;">⚡ Load 3 Tasks & 4 Workers Scenario</button>
+                </section>
+
+                <section class="control-section" style="margin-bottom: 15px;">
+                    <h3 style="font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px;">CONFIGURATION</h3>
+                    <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                        <div>
+                            <div style="font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">WORKERS IN DB</div>
+                            <div id="stat-workers" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-blue);">0</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">PENDING TASKS</div>
+                            <div id="stat-tasks" style="font-size: 1.3rem; font-weight: 700; color: var(--accent-orange);">0</div>
+                        </div>
+                    </div>
+                </section>
+                
+                <section class="control-section" style="margin-bottom: 15px;">
+                    <h3 style="font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px;">ALGORITHM</h3>
+                    <div style="margin-bottom: 8px;">
+                        <label style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; display:block;">MODE</label>
+                        <select id="algorithm-mode" class="form-group" style="margin-bottom: 8px; width: 100%;">
+                            <option value="worker">Worker-Proposing</option>
+                            <option value="task">Task-Proposing</option>
+                        </select>
+                    </div>
+                    <div class="button-group" style="display: flex; flex-direction: column; gap: 6px;">
+                        <button id="btn-start" class="btn btn-primary" style="justify-content: center; font-size:0.8rem; padding:8px;">▶ Start Simulation</button>
+                        <button id="btn-next-step" class="btn btn-secondary" style="justify-content: center; font-size:0.8rem; padding:8px;">⏭ Next Step</button>
+                        <button id="btn-clear-db" class="btn btn-danger" style="justify-content: center; font-size:0.8rem; padding:8px;">🔄 Clear DB / Reset</button>
+                    </div>
+                </section>
+                
+                <section class="control-section" style="margin-bottom: 15px;">
+                    <h3 style="font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">ANIMATION SPEED</h3>
+                    <div class="slider-group">
+                        <input type="range" id="speed-slider" min="100" max="2000" step="100" value="800">
+                        <span id="speed-display">800ms</span>
+                    </div>
+                </section>
+
+                <!-- Preferences Overview (Requesters & Workers) -->
+                <section class="control-section" style="margin-bottom: 15px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <h3 style="font-size: 0.8rem; text-transform: uppercase; margin:0;">PREFERENCES MATRIX</h3>
+                        <span style="font-size: 0.65rem; color:var(--text-muted);">Dynamically Used</span>
+                    </div>
+                    <div id="admin-preferences-matrix" style="font-size: 0.75rem; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px; max-height: 180px; overflow-y: auto;">
+                        <div style="color:var(--text-muted); font-size:0.75rem;">Loading preferences...</div>
+                    </div>
+                </section>
+
+                <section class="control-section">
+                    <h3 style="font-size: 0.8rem; text-transform: uppercase; margin-bottom: 5px;">STEP EXPLANATION</h3>
+                    <div id="step-explanation" class="step-explanation">
+                        Click "Load Demo Scenario" or add tasks & workers, then start the Gale-Shapley simulation.
+                    </div>
+                </section>
+            </aside>
+            
+            <!-- Center Panel: Spatial Grid Visualization -->
+            <section id="visualization-panel" class="panel panel-center" style="display: flex; flex-direction: column; overflow: hidden; padding: 0;">
+                <div class="viz-wrapper" style="flex: 1; height: 100%; display: flex; flex-direction: column; position: relative;">
+                    <div id="viz-container" class="viz-container" style="flex: 1; width: 100%; height: 100%; overflow: hidden; position: relative; background: var(--svg-bg, #ffffff);">
+                        <svg id="spatial-svg" viewBox="0 0 800 600" preserveAspectRatio="xMidYMid meet" style="width: 100%; height: 100%; display: block;"></svg>
+                    </div>
+                    <div id="preference-inspector" class="preference-inspector hidden" style="position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 16px; min-width: 280px; box-shadow: var(--shadow); z-index: 10;">
+                        <div class="pref-header-wrap" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div id="pref-inspector-header" class="pref-header" style="font-weight: 700; font-size: 0.85rem;"></div>
+                            <button id="btn-close-inspector" class="btn-close-sm" style="background: none; border: none; font-size: 1rem; cursor: pointer; color: var(--text-muted);" onclick="document.getElementById('preference-inspector').classList.add('hidden')">✕</button>
+                        </div>
+                        <div id="pref-inspector-list" class="pref-list" style="margin-top: 8px; max-height: 140px; overflow-y: auto;"></div>
+                    </div>
+                    <div id="entity-info" class="entity-info" style="text-align: center; font-size: 0.75rem; color: var(--text-muted); padding: 8px 0; border-top: 1px solid var(--border-color); background: var(--bg-secondary);">
+                        Click on a worker or task to inspect preferences
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Right Panel: Algorithm State (Matching screenshot exactly) -->
+            <aside class="panel" style="overflow-y: auto; width: 320px;">
+                <h2 style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); margin-bottom: 15px; letter-spacing: 1px; text-transform: uppercase;">ALGORITHM STATE</h2>
+                
+                <div class="state-section">
+                    <div style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">CURRENT STEP</div>
+                    <div id="current-step-display" class="state-display">Step 0</div>
+                </div>
+                
+                <div class="state-section">
+                    <div style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">CURRENT PROPOSAL</div>
+                    <div id="current-proposal-display" class="proposal-display">None</div>
+                </div>
+                
+                <div class="state-section">
+                    <div style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">CURRENT MATCHES</div>
+                    <div class="table-container">
+                        <table class="matches-table">
+                            <thead>
+                                <tr>
+                                    <th>WORKER</th>
+                                    <th>TASK</th>
+                                    <th>DISTANCE</th>
+                                    <th>STATUS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="matches-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="state-section">
+                    <div style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">UNMATCHED</div>
+                    <div id="unmatched-list" class="unmatched-list">
+                        <span class="unmatched-tag">None</span>
+                    </div>
+                </div>
+
+                <div class="state-section">
+                    <div style="font-size: 0.68rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">PROPOSAL HISTORY</div>
+                    <div id="proposal-history" class="proposal-history">
+                        <div style="color: var(--text-muted); padding: 8px 0; font-size: 0.75rem;">No history yet.</div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+    
+    <!-- MODALS -->
+    <!-- Rate Worker Modal -->
+    <div id="rate-worker-modal" class="modal-overlay hidden">
+        <div class="modal-container" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Rate Worker</h2>
+                <button class="modal-close-btn" onclick="document.getElementById('rate-worker-modal').classList.add('hidden')">✕</button>
+            </div>
+            <div class="modal-body" style="text-align: center;">
+                <p>How was your experience with this worker?</p>
+                <div class="star-rating" style="font-size: 2rem; margin: 20px 0; cursor: pointer;">
+                    <span data-val="1">☆</span><span data-val="2">☆</span><span data-val="3">☆</span><span data-val="4">☆</span><span data-val="5">☆</span>
+                </div>
+                <input type="hidden" id="rating-val" value="5">
+                <button id="btn-submit-rating" class="btn btn-primary">Submit & Complete</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Completion Overlay -->
+    <div id="completion-overlay" class="completion-overlay hidden">
+        <div class="completion-content">
+            <div class="completion-check-icon">✓</div>
+            <h2>Stable Matching Found!</h2>
+            <p>The Gale-Shapley algorithm has successfully converged to a stable assignment.</p>
+            
+            <div class="completion-stat-grid">
+                <div class="completion-stat-item">
+                    <span class="completion-stat-value" id="summary-matched">0</span>
+                    <span class="completion-stat-label">Matches</span>
+                </div>
+                <div class="completion-stat-item">
+                    <span class="completion-stat-value" id="summary-proposals">0</span>
+                    <span class="completion-stat-label">Proposals</span>
+                </div>
+            </div>
+            
+            <div class="stability-result stable" style="margin: 15px 0;">
+                <strong>✓ Mathematically Stable</strong><br>
+                There is no blocking pair — no requester and worker both prefer each other over their assigned partner.
+            </div>
+            
+            <div class="completion-actions">
+                <button id="btn-close-summary" class="btn btn-secondary">View Final State</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=10"></script>
+</body>
+</html>
