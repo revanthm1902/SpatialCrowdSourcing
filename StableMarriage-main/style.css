@@ -81,6 +81,7 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden;
 }
 
 /* Scrollbar */
@@ -753,14 +754,16 @@ select {
     isolation: isolate;
     width: 100%;
     max-width: none;
-    min-height: 100vh;
+    height: 100vh;
+    min-height: 0;
+    overflow: hidden;
     margin: 0;
-    padding: clamp(72px, 10vh, 120px) clamp(28px, 9vw, 150px);
+    padding: clamp(56px, 8vh, 90px) 24px;
     display: grid;
-    grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 440px);
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
     align-content: center;
-    justify-content: center;
-    gap: clamp(70px, 11vw, 180px);
+    gap: 28px;
     border: none;
     border-radius: 0;
     box-shadow: none;
@@ -769,24 +772,17 @@ select {
         radial-gradient(circle at 90% 85%, rgba(124, 58, 237, 0.08), transparent 30%),
         var(--bg-primary);
 }
-#auth-screen::before {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    width: 1px;
-    background: linear-gradient(transparent, var(--border-color), transparent);
-}
 .auth-floating-play {
     position: absolute;
     top: 28px;
     right: 34px;
 }
 .auth-header {
+    grid-column: 1;
+    width: 100%;
     align-self: center;
-    max-width: 470px;
+    justify-self: center;
+    max-width: none;
     text-align: center;
     margin: 0;
 }
@@ -800,24 +796,29 @@ select {
     text-transform: uppercase;
 }
 .auth-header h2 {
-    font-size: clamp(2.6rem, 5vw, 4.5rem);
+    font-size: clamp(2.4rem, 4vw, 3.5rem);
     font-weight: 800;
     color: var(--text-primary);
     margin: 0 0 18px;
     letter-spacing: -0.06em;
     line-height: 1;
+    white-space: nowrap;
 }
 .auth-header p {
-    max-width: 390px;
+    max-width: none;
     margin: 0 auto;
     color: var(--text-secondary);
-    font-size: 1.05rem;
+    font-size: 1rem;
     line-height: 1.7;
+    white-space: nowrap;
 }
 .auth-form {
+    grid-column: 1;
     align-self: center;
-    width: 100%;
-    padding: clamp(28px, 4vw, 44px);
+    justify-self: center;
+    width: min(100%, 430px);
+    margin: 0 auto;
+    padding: 28px 30px;
     border: 1px solid var(--border-color);
     border-radius: 18px;
     background: color-mix(in srgb, var(--bg-secondary) 94%, transparent);
@@ -835,8 +836,8 @@ select {
     letter-spacing: 0.02em;
 }
 .input-group input, .input-group select {
-    min-height: 48px;
-    padding: 12px 15px;
+    min-height: 44px;
+    padding: 10px 14px;
     font-size: 0.95rem;
     border-radius: 11px;
     background: var(--bg-tertiary);
@@ -849,7 +850,7 @@ select {
     border-color: var(--accent-blue);
 }
 .auth-btn {
-    min-height: 48px;
+    min-height: 44px;
     font-size: 1rem;
     font-weight: 600;
     border-radius: 11px;
@@ -870,8 +871,10 @@ select {
 }
 #auth-error {
     min-height: 22px;
-    grid-column: 2;
-    margin: -12px 2px 0;
+    grid-column: 1;
+    width: min(100%, 430px);
+    justify-self: center;
+    margin: -18px 2px 0;
     color: var(--accent-red);
     font-size: 0.8rem;
     line-height: 1.4;
@@ -1060,14 +1063,8 @@ ul#requester-tasks-list li {
     #auth-screen {
         min-height: 100vh;
         padding: 84px 22px 32px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        gap: 30px;
-    }
-
-    #auth-screen::before {
-        display: none;
+        gap: 24px;
+        overflow: hidden;
     }
 
     .auth-floating-play {
@@ -1076,18 +1073,22 @@ ul#requester-tasks-list li {
     }
 
     .auth-header {
+        width: 100%;
         max-width: 440px;
     }
 
     .auth-header h2 {
         font-size: 2.6rem;
+        white-space: normal;
     }
 
     .auth-header p {
         font-size: 0.95rem;
+        white-space: normal;
     }
 
     .auth-form {
+        width: min(100%, 430px);
         padding: 26px 20px;
     }
 
