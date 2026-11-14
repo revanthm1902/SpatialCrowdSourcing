@@ -749,51 +749,89 @@ select {
 
 /* Premium Auth UI Overrides */
 #auth-screen {
-    margin-top: 12vh;
-    padding: 40px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-    border: none;
-    border-radius: 16px;
+    width: min(440px, calc(100% - 32px));
+    margin: auto;
+    padding: 42px;
+    box-shadow: 0 18px 50px rgba(15, 20, 25, 0.12);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
     background: var(--bg-secondary);
 }
 .auth-header {
     text-align: center;
-    margin-bottom: 30px;
+    margin-bottom: 28px;
+}
+.auth-brand-mark {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 18px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+    color: #fff;
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+}
+.auth-eyebrow {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--accent-blue);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
 .auth-header h2 {
-    font-size: 1.8rem;
+    font-size: 2rem;
     font-weight: 800;
-    color: var(--accent-blue);
-    margin: 0 0 5px 0;
-    letter-spacing: -0.5px;
+    color: var(--text-primary);
+    margin: 0 0 8px;
+    letter-spacing: -0.04em;
 }
 .auth-header p {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-    margin: 0;
+    max-width: 290px;
+    margin: 0 auto;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    line-height: 1.5;
 }
 .input-group {
-    margin-bottom: 15px;
+    margin-bottom: 14px;
+}
+.input-group label {
+    display: block;
+    margin: 0 0 7px 2px;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
 }
 .input-group input, .input-group select {
-    padding: 12px 16px;
+    min-height: 48px;
+    padding: 12px 15px;
     font-size: 0.95rem;
-    border-radius: 10px;
+    border-radius: 11px;
     background: var(--bg-tertiary);
     border: 1px solid var(--border-color);
     transition: all 0.2s ease;
     margin-bottom: 0;
 }
 .input-group input:focus, .input-group select:focus {
-    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
     border-color: var(--accent-blue);
 }
 .auth-btn {
-    padding: 12px;
+    min-height: 48px;
     font-size: 1rem;
     font-weight: 600;
-    border-radius: 10px;
-    margin-top: 5px;
+    border-radius: 11px;
+    margin-top: 7px;
+}
+#btn-login {
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.2);
 }
 #btn-register {
     background: transparent;
@@ -804,6 +842,14 @@ select {
     background: var(--bg-hover);
     border-color: var(--text-muted);
     color: var(--text-primary);
+}
+#auth-error {
+    min-height: 22px;
+    margin: 16px 2px 0;
+    color: var(--accent-red);
+    font-size: 0.8rem;
+    line-height: 1.4;
+    text-align: center;
 }
 
 #app-container {
@@ -982,6 +1028,16 @@ ul#requester-tasks-list li {
     gap: 30px;
     flex: 1;
     min-height: 0;
+}
+
+@media (max-width: 600px) {
+    #auth-screen {
+        padding: 32px 22px;
+    }
+
+    .auth-header h2 {
+        font-size: 1.75rem;
+    }
 }
 .dashboard-card {
     background: var(--bg-secondary);

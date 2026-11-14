@@ -718,7 +718,7 @@ function renderAdminPreferencesMatrix() {
     if (!container) return;
 
     if (adminTasks.length === 0 && adminWorkers.length === 0) {
-        container.innerHTML = '<div style="color:var(--text-muted);">No entities loaded. Click "Load Demo Scenario" above.</div>';
+        container.innerHTML = '<div style="color:var(--text-muted);">No entities loaded. Add tasks and workers to begin.</div>';
         return;
     }
 
@@ -1114,7 +1114,7 @@ async function startSimulation(stepByStep = false) {
 
 function stepSimulation() {
     if (simulationSteps.length === 0) {
-        document.getElementById('step-explanation').textContent = 'No simulation steps available. Click Start Simulation or Load Demo Scenario.';
+        document.getElementById('step-explanation').textContent = 'No simulation steps available. Add tasks and workers, then start the simulation.';
         return;
     }
 
