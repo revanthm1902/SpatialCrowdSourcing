@@ -366,7 +366,9 @@ function initializeAlgorithm() {
 function prefers(entity, candidateId, currentId) {
     if (currentId === null) return true;
     const candidateRank = entity.preferences.indexOf(candidateId);
+    if (candidateRank === -1) return false;
     const currentRank = entity.preferences.indexOf(currentId);
+    if (currentRank === -1) return true;
     return candidateRank < currentRank;
 }
 
@@ -486,7 +488,7 @@ function onAlgorithmComplete() {
     if (minDist === Infinity) minDist = 0;
    
     statsDiv.innerHTML = `
-        <div="completion-stat-grid">
+        <div class="completion-stat-grid">
             <div class="completion-stat-item"><span class="completion-stat-value">${state.workers.length}</span><span class="completion-stat-label">Workers</span></div>
             <div class="completion-stat-item"><span class="completion-stat-value">${state.tasks.length}</span><span class="completion-stat-label">Tasks</span></div>
             <div class="completion-stat-item"><span class="completion-stat-value">${state.algorithm.totalProposals}</span><span class="completion-stat-label">Total Proposals</span></div>
@@ -875,13 +877,14 @@ function renderVisualization() {
         g.style.cursor = 'grab';
        
         let isSelected = state.selectedEntity && state.selectedEntity.type === 'worker' && state.selectedEntity.id === w.id;
-        let isProposing = state.algorithm.pendingAction && state.algorithm.pendingAction.proposer.id === w.id && state.algorithm.mode === 'worker';
+        let isProposing = state.algorithm.pendingAction && state.algorithm.pendingAction.proposer.id === w.id;
+        let isReceiving = state.algorithm.pendingAction && state.algorithm.pendingAction.receiver.id === w.id;
        
         const circle = document.createElementNS(SVG_NS, 'circle');
         circle.setAttribute('r', isSelected ? '24' : '20');
         circle.setAttribute('fill', w.currentMatch !== null ? '#1e40af' : '#3b82f6');
-        circle.setAttribute('stroke', isProposing ? '#a855f7' : (isSelected ? '#fff' : '#1e3a8a'));
-        circle.setAttribute('stroke-width', isProposing || isSelected ? '4' : '2');
+        circle.setAttribute('stroke', (isProposing || isReceiving) ? '#a855f7' : (isSelected ? '#fff' : '#1e3a8a'));
+        circle.setAttribute('stroke-width', (isProposing || isReceiving || isSelected) ? '4' : '2');
        
         const text = document.createElementNS(SVG_NS, 'text');
         text.textContent = w.label;
@@ -905,6 +908,7 @@ function renderVisualization() {
         g.style.cursor = 'grab';
        
         let isSelected = state.selectedEntity && state.selectedEntity.type === 'task' && state.selectedEntity.id === t.id;
+        let isProposing = state.algorithm.pendingAction && state.algorithm.pendingAction.proposer.id === t.id;
         let isReceiving = state.algorithm.pendingAction && state.algorithm.pendingAction.receiver.id === t.id;
        
         const rect = document.createElementNS(SVG_NS, 'rect');
@@ -916,8 +920,8 @@ function renderVisualization() {
         rect.setAttribute('height', size);
         rect.setAttribute('rx', '6');
         rect.setAttribute('fill', t.currentMatch !== null ? '#b45309' : '#f59e0b');
-        rect.setAttribute('stroke', isReceiving ? '#a855f7' : (isSelected ? '#fff' : '#78350f'));
-        rect.setAttribute('stroke-width', isReceiving || isSelected ? '4' : '2');
+        rect.setAttribute('stroke', (isReceiving || isProposing) ? '#a855f7' : (isSelected ? '#fff' : '#78350f'));
+        rect.setAttribute('stroke-width', (isReceiving || isProposing || isSelected) ? '4' : '2');
         rect.setAttribute('transform', 'rotate(45)');
        
         const text = document.createElementNS(SVG_NS, 'text');

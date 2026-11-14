@@ -669,17 +669,7 @@ input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 16px
   .completion-stat-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
-admin dashboard should look like this with actual workers,atask data -- attached files of index.html, style.css, script.js for reference, show the admin panel like this to make it interactively good for UIUX (attached sample image for ref of admin dashboard - how to show), and intitialy positions give it randomly for requesters, workers and obv it can be modified but initially give some random values
-</USER_REQUEST>
-<ADDITIONAL_METADATA>
-The current local time is: 2026-10-07T01:36:18+05:30.
-
-The user has uploaded 1 image(s):
-- C:/Users/revan/.gemini/antigravity/brain/dfdc1978-54de-492b-bc45-e422ff6d5223/.user_uploaded/media_1791317086407.png
-You can embed this image in an artifact if you need the USER to review it.
-</ADDITIONAL_METADATA>
-
-/* ===== AUTH / ROLE SPECIFIC (Added for Fullstack) ===== */
+/* ===== AUTH / ROLE SPECIFIC ===== */
 .screen {
     max-width: 400px;
     margin: 100px auto;
@@ -696,60 +686,17 @@ You can embed this image in an artifact if you need the USER to review it.
     gap: 15px;
 }
 
-
-
 #auth-error, #task-msg, #worker-msg {
     margin-top: 10px;
     font-size: 0.9rem;
 }
 #auth-error { color: var(--accent-red); }
 
-input[type=email], input[type=password], input[type=text] {
-  width: 100%; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem;
-}
-input:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(74,158,255,0.1); }
-
-/* Added explicit overrides for missing form styles */
-select, input[type=number] {
-  width: 100%; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem; margin-bottom: 8px;
-}
-.role-dashboard h2 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border-color);
-}
-.role-dashboard h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-/* ===== AUTH / ROLE SPECIFIC (Added for Fullstack) ===== */
-.screen {
-    max-width: 400px;
-    margin: 100px auto;
-    background: var(--bg-secondary);
-    padding: 30px;
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow);
-    border: 1px solid var(--border-color);
-}
-.auth-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-#auth-error, #task-msg, #worker-msg {
-    margin-top: 10px;
-    font-size: 0.9rem;
-}
-#auth-error { color: var(--accent-red); }
 input[type=email], input[type=password], input[type=text], select, input[type=number] {
   width: 100%; padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); font-family: inherit; font-size: 0.85rem; margin-bottom: 8px;
 }
 input:focus, select:focus { outline: none; border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(74,158,255,0.1); }
+
 .role-dashboard h2 {
     font-size: 1.5rem;
     font-weight: 700;
@@ -887,10 +834,10 @@ select {
     padding-bottom: 10px;
     margin-bottom: 20px;
 }
-.role-dashboard label, .role-dashboard div {
-    font-size: 0.95rem;
+.role-dashboard label {
+    font-size: 0.85rem;
     color: var(--text-secondary);
-    font-weight: 500;
+    font-weight: 600;
 }
 ul#requester-tasks-list {
     list-style: none;
@@ -898,15 +845,15 @@ ul#requester-tasks-list {
 }
 ul#requester-tasks-list li {
     background: var(--bg-tertiary);
-    margin-bottom: 10px;
-    padding: 15px;
+    margin-bottom: 12px;
+    padding: 16px;
     border-radius: 10px;
     border-left: 4px solid var(--accent-orange);
     color: var(--text-primary);
     font-weight: 500;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: column;
+    gap: 8px;
 }
 #worker-assigned-task {
     /* Removed hardcoded styling so inner elements can style themselves */

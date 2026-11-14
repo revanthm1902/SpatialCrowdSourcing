@@ -1,0 +1,19 @@
+{
+  "name": "scsma-project",
+  "version": "1.0.0",
+  "description": "Spatial Crowdsourcing Gale-Shapley Matching Platform",
+  "main": "StableMarriage-main/server.js",
+  "scripts": {
+    "start": "node StableMarriage-main/server.js",
+    "install:app": "cd StableMarriage-main && npm install"
+  },
+  "keywords": [
+    "gale-shapley",
+    "stable-marriage",
+    "spatial-crowdsourcing",
+    "supabase",
+    "express"
+  ],
+  "author": "",
+  "license": "ISC"
+}

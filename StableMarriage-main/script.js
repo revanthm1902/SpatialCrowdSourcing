@@ -24,7 +24,9 @@ const authScreen = document.getElementById('auth-screen');
 const appContainer = document.getElementById('app-container');
 const userInfo = document.getElementById('user-info');
 const authError = document.getElementById('auth-error');
-const API_URL = 'http://localhost:3000';
+const API_URL = (typeof window !== 'undefined' && window.location && window.location.origin && window.location.origin.startsWith('http'))
+    ? window.location.origin
+    : 'http://localhost:3000';
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const dashboards = {
@@ -44,6 +46,20 @@ function debounce(fn, delay = 100) {
 
 function calculateDistance(x1, y1, x2, y2) {
     return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2)).toFixed(2);
+}
+
+function getTaskPos(t, i = 0) {
+    return {
+        x: Number.isFinite(t.lat) ? Number(t.lat) : (180 + (i % 3) * 200),
+        y: Number.isFinite(t.lng) ? Number(t.lng) : (180 + Math.floor(i / 3) * 160)
+    };
+}
+
+function getWorkerPos(w, i = 0) {
+    return {
+        x: Number.isFinite(w.current_lat) ? Number(w.current_lat) : (140 + (i % 4) * 160),
+        y: Number.isFinite(w.current_lng) ? Number(w.current_lng) : (120 + (i % 2) * 200)
+    };
 }
 
 window.toggleWorkerProfessionField = function(role) {
@@ -69,7 +85,15 @@ document.getElementById('btn-create-task').addEventListener('click', handleCreat
 document.getElementById('btn-update-worker').addEventListener('click', handleUpdateWorkerProfile);
 
 if (document.getElementById('btn-start')) document.getElementById('btn-start').addEventListener('click', () => startSimulation(false));
-if (document.getElementById('btn-next-step')) document.getElementById('btn-next-step').addEventListener('click', () => stepSimulation());
+if (document.getElementById('btn-next-step')) {
+    document.getElementById('btn-next-step').addEventListener('click', async () => {
+        if (simulationSteps.length === 0) {
+            await startSimulation(true);
+        } else {
+            stepSimulation();
+        }
+    });
+}
 if (document.getElementById('btn-clear-db')) document.getElementById('btn-clear-db').addEventListener('click', handleClearDB);
 if (document.getElementById('btn-load-demo')) document.getElementById('btn-load-demo').addEventListener('click', handleLoadDemoScenario);
 
@@ -833,7 +857,9 @@ function updateRightPanelState(activeStep = null, currentMatches = [], unmatched
                 if (t.status === 'assigned') {
                     const wIdx = adminWorkers.findIndex(w => w.user_id === t.assigned_worker_id);
                     const w = adminWorkers[wIdx];
-                    const dist = w ? calculateDistance(w.current_lat || 150, w.current_lng || 200, t.lat || 200, t.lng || 200) : '—';
+                    const wPos = w ? getWorkerPos(w, wIdx) : null;
+                    const tPos = getTaskPos(t, i);
+                    const dist = wPos ? calculateDistance(wPos.x, wPos.y, tPos.x, tPos.y) : '—';
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><strong>W${wIdx + 1}</strong></td>
@@ -899,20 +925,6 @@ function renderSpatialVisualization(activeProposal = null, currentMatches = [], 
     bgRect.setAttribute('fill', 'url(#grid)');
     svg.appendChild(bgRect);
 
-    // Coordinate scaling helper (0-800 X 0-600)
-    function getTaskPos(t, i) {
-        return {
-            x: t.lat || (180 + (i % 3) * 200),
-            y: t.lng || (180 + Math.floor(i / 3) * 160)
-        };
-    }
-    function getWorkerPos(w, i) {
-        return {
-            x: w.current_lat || (140 + (i % 4) * 160),
-            y: w.current_lng || (120 + (i % 2) * 200)
-        };
-    }
-
     // 3. Draw Accepted Match Lines (Solid Green)
     currentMatches.forEach(m => {
         const line = document.createElementNS(SVG_NS, 'line');
@@ -953,14 +965,16 @@ function renderSpatialVisualization(activeProposal = null, currentMatches = [], 
         const pos = getTaskPos(t, i);
         const isMatched = activeNodeIds.matchedTaskIds && activeNodeIds.matchedTaskIds.includes(t.id);
         const isActiveTarget = activeNodeIds.targetId === t.id;
+        const isActiveProposer = activeNodeIds.proposerId === t.id;
+        const isActive = isActiveTarget || isActiveProposer;
 
         const g = document.createElementNS(SVG_NS, 'g');
         g.setAttribute('transform', `translate(${pos.x}, ${pos.y}) rotate(45)`);
         g.style.cursor = 'pointer';
         g.onclick = () => inspectAdminEntity('task', t.id);
 
-        // Outer Glow Halo if active target
-        if (isActiveTarget) {
+        // Outer Glow Halo if active proposer or target
+        if (isActive) {
             const halo = document.createElementNS(SVG_NS, 'rect');
             halo.setAttribute('x', '-25');
             halo.setAttribute('y', '-25');
@@ -968,7 +982,7 @@ function renderSpatialVisualization(activeProposal = null, currentMatches = [], 
             halo.setAttribute('height', '50');
             halo.setAttribute('rx', '8');
             halo.setAttribute('fill', 'none');
-            halo.setAttribute('stroke', '#a855f7');
+            halo.setAttribute('stroke', isActiveProposer ? '#fbbf24' : '#a855f7');
             halo.setAttribute('stroke-width', '4');
             halo.setAttribute('filter', 'url(#purple-glow)');
             g.appendChild(halo);
@@ -980,9 +994,9 @@ function renderSpatialVisualization(activeProposal = null, currentMatches = [], 
         rect.setAttribute('width', '36');
         rect.setAttribute('height', '36');
         rect.setAttribute('rx', '6');
-        rect.setAttribute('fill', isMatched ? '#b45309' : (isActiveTarget ? '#b45309' : '#f59e0b'));
-        rect.setAttribute('stroke', isActiveTarget ? '#a855f7' : (isMatched ? '#78350f' : '#b45309'));
-        rect.setAttribute('stroke-width', isActiveTarget ? '3' : '2');
+        rect.setAttribute('fill', isMatched ? '#b45309' : (isActive ? '#b45309' : '#f59e0b'));
+        rect.setAttribute('stroke', isActive ? (isActiveProposer ? '#fbbf24' : '#a855f7') : (isMatched ? '#78350f' : '#b45309'));
+        rect.setAttribute('stroke-width', isActive ? '3' : '2');
         g.appendChild(rect);
 
         const text = document.createElementNS(SVG_NS, 'text');
@@ -1003,18 +1017,20 @@ function renderSpatialVisualization(activeProposal = null, currentMatches = [], 
         const pos = getWorkerPos(w, i);
         const isMatched = activeNodeIds.matchedWorkerIds && activeNodeIds.matchedWorkerIds.includes(w.user_id);
         const isActiveProposer = activeNodeIds.proposerId === w.user_id;
+        const isActiveTarget = activeNodeIds.targetId === w.user_id;
+        const isActive = isActiveProposer || isActiveTarget;
 
         const g = document.createElementNS(SVG_NS, 'g');
         g.setAttribute('transform', `translate(${pos.x}, ${pos.y})`);
         g.style.cursor = 'pointer';
         g.onclick = () => inspectAdminEntity('worker', w.user_id);
 
-        // Outer Glow Halo if active proposer
-        if (isActiveProposer) {
+        // Outer Glow Halo if active proposer or target
+        if (isActive) {
             const halo = document.createElementNS(SVG_NS, 'circle');
             halo.setAttribute('r', '27');
             halo.setAttribute('fill', 'none');
-            halo.setAttribute('stroke', '#a855f7');
+            halo.setAttribute('stroke', isActiveProposer ? '#fbbf24' : '#a855f7');
             halo.setAttribute('stroke-width', '4');
             halo.setAttribute('filter', 'url(#purple-glow)');
             g.appendChild(halo);
@@ -1022,9 +1038,9 @@ function renderSpatialVisualization(activeProposal = null, currentMatches = [], 
 
         const circle = document.createElementNS(SVG_NS, 'circle');
         circle.setAttribute('r', '20');
-        circle.setAttribute('fill', isMatched ? '#1e40af' : (isActiveProposer ? '#1e40af' : '#1d4ed8'));
-        circle.setAttribute('stroke', isActiveProposer ? '#a855f7' : '#1e3a8a');
-        circle.setAttribute('stroke-width', isActiveProposer ? '3' : '2');
+        circle.setAttribute('fill', isMatched ? '#1e40af' : (isActive ? '#1e40af' : '#1d4ed8'));
+        circle.setAttribute('stroke', isActive ? (isActiveProposer ? '#fbbf24' : '#a855f7') : '#1e3a8a');
+        circle.setAttribute('stroke-width', isActive ? '3' : '2');
         g.appendChild(circle);
 
         const text = document.createElementNS(SVG_NS, 'text');
@@ -1097,6 +1113,11 @@ async function startSimulation(stepByStep = false) {
 }
 
 function stepSimulation() {
+    if (simulationSteps.length === 0) {
+        document.getElementById('step-explanation').textContent = 'No simulation steps available. Click Start Simulation or Load Demo Scenario.';
+        return;
+    }
+
     if (currentStepIndex >= simulationSteps.length) {
         finishSimulation();
         return;
@@ -1117,8 +1138,11 @@ function stepSimulation() {
         return idx !== -1 ? `T${idx + 1}` : 'T';
     }
 
-    const pLabel = isWorkerProposing ? getWorkerLabel(step.proposerId || step.workerId) : getTaskLabel(step.proposerId || step.taskId);
-    const rLabel = isWorkerProposing ? getTaskLabel(step.targetId || step.taskId) : getWorkerLabel(step.targetId || step.workerId);
+    const proposerId = step.proposerId || (isWorkerProposing ? step.workerId : step.taskId);
+    const targetId = step.targetId || (isWorkerProposing ? step.taskId : step.workerId);
+
+    const pLabel = isWorkerProposing ? getWorkerLabel(proposerId) : getTaskLabel(proposerId);
+    const rLabel = isWorkerProposing ? getTaskLabel(targetId) : getWorkerLabel(targetId);
 
     const stepData = {
         step: currentStepIndex,
@@ -1135,10 +1159,15 @@ function stepSimulation() {
 
     for (let i = 0; i < currentStepIndex; i++) {
         const s = simulationSteps[i];
-        const sPLabel = isWorkerProposing ? getWorkerLabel(s.proposerId || s.workerId) : getTaskLabel(s.proposerId || s.taskId);
-        const sRLabel = isWorkerProposing ? getTaskLabel(s.targetId || s.taskId) : getWorkerLabel(s.targetId || s.workerId);
+        const sProposerId = s.proposerId || (isWorkerProposing ? s.workerId : s.taskId);
+        const sTargetId = s.targetId || (isWorkerProposing ? s.taskId : s.workerId);
+        const sPLabel = isWorkerProposing ? getWorkerLabel(sProposerId) : getTaskLabel(sProposerId);
+        const sRLabel = isWorkerProposing ? getTaskLabel(sTargetId) : getWorkerLabel(sTargetId);
 
         if (s.type === 'accept' || s.type === 'replace') {
+            if (s.replacedTaskId) {
+                delete taskHolds[s.replacedTaskId];
+            }
             taskHolds[s.taskId] = s.workerId;
             historyList.unshift({
                 proposer: sPLabel,
@@ -1169,58 +1198,62 @@ function stepSimulation() {
             matchedTaskIds.push(tId);
             matchedWorkerIds.push(wId);
 
-            const wx = wObj.current_lat || (140 + (wIdx % 4) * 160);
-            const wy = wObj.current_lng || (120 + (wIdx % 2) * 200);
-            const tx = tObj.lat || (180 + (tIdx % 3) * 200);
-            const ty = tObj.lng || (180 + Math.floor(tIdx / 3) * 160);
-            const dist = calculateDistance(wx, wy, tx, ty);
+            const wPos = getWorkerPos(wObj, wIdx);
+            const tPos = getTaskPos(tObj, tIdx);
+            const dist = calculateDistance(wPos.x, wPos.y, tPos.x, tPos.y);
 
             currentMatches.push({
                 workerLabel: `W${wIdx + 1}`,
                 taskLabel: `T${tIdx + 1}`,
                 distance: dist,
                 isFinal: currentStepIndex === simulationSteps.length,
-                wx, wy, tx, ty
+                wx: wPos.x,
+                wy: wPos.y,
+                tx: tPos.x,
+                ty: tPos.y
             });
         }
     });
 
-    // Unmatched proposers
-    const unmatchedWorkers = adminWorkers.map((w, idx) => `W${idx + 1}`).filter((_, idx) => !matchedWorkerIds.includes(adminWorkers[idx].user_id));
+    // Unmatched entities based on current algorithm mode
+    let unmatchedList = [];
+    if (isWorkerProposing) {
+        unmatchedList = adminWorkers.map((w, idx) => `W${idx + 1}`).filter((_, idx) => !matchedWorkerIds.includes(adminWorkers[idx].user_id));
+    } else {
+        unmatchedList = adminTasks.map((t, idx) => `T${idx + 1}`).filter((_, idx) => !matchedTaskIds.includes(adminTasks[idx].id));
+    }
 
     // Active proposal line coordinates
     let activeProposal = null;
     if (step.type === 'proposal') {
-        const wId = isWorkerProposing ? step.proposerId : step.targetId;
-        const tId = isWorkerProposing ? step.targetId : step.proposerId;
+        const wId = isWorkerProposing ? proposerId : targetId;
+        const tId = isWorkerProposing ? targetId : proposerId;
         const wIdx = adminWorkers.findIndex(w => w.user_id === wId);
         const tIdx = adminTasks.findIndex(t => t.id === tId);
         const wObj = adminWorkers[wIdx];
         const tObj = adminTasks[tIdx];
 
         if (wObj && tObj) {
-            const wx = wObj.current_lat || (140 + (wIdx % 4) * 160);
-            const wy = wObj.current_lng || (120 + (wIdx % 2) * 200);
-            const tx = tObj.lat || (180 + (tIdx % 3) * 200);
-            const ty = tObj.lng || (180 + Math.floor(tIdx / 3) * 160);
+            const wPos = getWorkerPos(wObj, wIdx);
+            const tPos = getTaskPos(tObj, tIdx);
 
             activeProposal = {
-                x1: isWorkerProposing ? wx : tx,
-                y1: isWorkerProposing ? wy : ty,
-                x2: isWorkerProposing ? tx : wx,
-                y2: isWorkerProposing ? ty : wy
+                x1: isWorkerProposing ? wPos.x : tPos.x,
+                y1: isWorkerProposing ? wPos.y : tPos.y,
+                x2: isWorkerProposing ? tPos.x : wPos.x,
+                y2: isWorkerProposing ? tPos.y : wPos.y
             };
         }
     }
 
     const activeNodeIds = {
-        proposerId: step.proposerId || step.workerId,
-        targetId: step.targetId || step.taskId,
+        proposerId,
+        targetId,
         matchedTaskIds,
         matchedWorkerIds
     };
 
-    updateRightPanelState(stepData, currentMatches, unmatchedWorkers, historyList);
+    updateRightPanelState(stepData, currentMatches, unmatchedList, historyList);
     renderSpatialVisualization(activeProposal, currentMatches, activeNodeIds);
 }
 

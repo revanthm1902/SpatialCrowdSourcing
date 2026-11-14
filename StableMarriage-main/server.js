@@ -1,4 +1,5 @@
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '.env') });
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
@@ -6,7 +7,7 @@ const { createClient } = require('@supabase/supabase-js');
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
+app.use(express.static(__dirname));
 
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -34,16 +35,16 @@ app.post('/api/auth/register', async (req, res) => {
         });
         if (error) return res.status(400).json({ error: error.message });
         
-        const { error: roleError } = await supabase.from('user_roles').insert([{ user_id: data.user.id, role }]);
+        const { error: roleError } = await supabase.from('user_roles').upsert([{ user_id: data.user.id, role }], { onConflict: 'user_id' });
         if (roleError) return res.status(400).json({ error: roleError.message });
         
         try {
-            await supabase.from('users').insert([{ id: data.user.id, email, password_hash: 'dummy', role }]);
+            await supabase.from('users').upsert([{ id: data.user.id, email, password_hash: 'dummy', role }], { onConflict: 'id' });
         } catch(e){}
         
         if (role === 'worker') {
             const profession = job_type || 'Plumber';
-            await supabase.from('worker_profiles').insert([{ user_id: data.user.id, job_type: profession, is_available: true }]);
+            await supabase.from('worker_profiles').upsert([{ user_id: data.user.id, job_type: profession, is_available: true }], { onConflict: 'user_id' });
         }
         
         res.json({ message: 'User created' });
@@ -67,14 +68,18 @@ app.post('/api/clear', async (req, res) => {
 });
 
 function getDistance(lat1, lng1, lat2, lng2) {
-    return Math.sqrt(Math.pow(lat1 - lat2, 2) + Math.pow(lng1 - lng2, 2));
+    const x1 = Number(lat1) || 0;
+    const y1 = Number(lng1) || 0;
+    const x2 = Number(lat2) || 0;
+    const y2 = Number(lng2) || 0;
+    return Math.sqrt(Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2));
 }
 
 app.delete('/api/tasks/:id', async (req, res) => {
     try {
         const { id } = req.params;
         delete taskPreferencesStore[id];
-        const { error } = await supabase.from('tasks').delete().eq('id', id).eq('status', 'pending');
+        const { error } = await supabase.from('tasks').delete().eq('id', id).in('status', ['pending', 'pending_matching', 'offered']);
         if (error) return res.status(400).json({ error: error.message });
         res.json({ success: true });
     } catch (e) {
@@ -194,8 +199,8 @@ app.post('/api/workers/:id/preferences', (req, res) => {
 app.get('/api/simulation/environment', async (req, res) => {
     try {
         const [tasksRes, workersRes] = await Promise.all([
-            supabase.from('tasks').select('*').in('status', ['pending', 'pending_matching', 'offered']),
-            supabase.from('worker_profiles').select('*').eq('is_available', true)
+            supabase.from('tasks').select('*').in('status', ['pending', 'pending_matching', 'offered', 'assigned']),
+            supabase.from('worker_profiles').select('*')
         ]);
         
         const { data: { users } } = await supabase.auth.admin.listUsers();
@@ -349,7 +354,9 @@ app.post('/api/match', async (req, res) => {
 
         const steps = [];
         const finalMatches = []; // [{ task_id, worker_id, requester_email, worker_email }]
-        const jobTypes = [...new Set([...tasks.map(t => t.required_job_type), ...workers.map(w => w.job_type)])];
+        const jobTypes = [...new Set([...tasks.map(t => t.required_job_type), ...workers.map(w => w.job_type)])].filter(Boolean);
+        const allProcessedTasks = [];
+        const allProcessedWorkers = [];
 
         for (const job of jobTypes) {
             const jobTasks = tasks.filter(t => t.required_job_type === job).map(t => ({
@@ -391,7 +398,7 @@ app.post('/api/match', async (req, res) => {
 
             if (mode === 'worker') {
                 // ================= WORKER-PROPOSING GALE-SHAPLEY =================
-                while (hasUnmatched) {
+                while (hasUnmatched && round < 10000) {
                     hasUnmatched = false;
                     for (const w of jobWorkers) {
                         // If worker is unassigned and has remaining tasks in preference list
@@ -408,6 +415,8 @@ app.post('/api/match', async (req, res) => {
                                 proposerName: w.displayName,
                                 targetId: targetTask.id,
                                 targetName: targetTask.displayName,
+                                workerId: w.user_id,
+                                taskId: targetTask.id,
                                 job_type: job,
                                 message: `${w.displayName} proposes to ${targetTask.displayName} (Preference #${w.proposalIndex})`
                             };
@@ -422,6 +431,8 @@ app.post('/api/match', async (req, res) => {
                                     round,
                                     type: 'accept',
                                     proposer: 'worker',
+                                    proposerId: w.user_id,
+                                    targetId: targetTask.id,
                                     workerId: w.user_id,
                                     taskId: targetTask.id,
                                     replacedWorkerId: null,
@@ -443,6 +454,8 @@ app.post('/api/match', async (req, res) => {
                                         round,
                                         type: 'replace',
                                         proposer: 'worker',
+                                        proposerId: w.user_id,
+                                        targetId: targetTask.id,
                                         workerId: w.user_id,
                                         taskId: targetTask.id,
                                         replacedWorkerId: currentW.user_id,
@@ -456,6 +469,8 @@ app.post('/api/match', async (req, res) => {
                                         round,
                                         type: 'reject',
                                         proposer: 'worker',
+                                        proposerId: w.user_id,
+                                        targetId: targetTask.id,
                                         workerId: w.user_id,
                                         taskId: targetTask.id,
                                         message: `${targetTask.displayName} prefers holding ${currentW.displayName} and rejects ${w.displayName}.`
@@ -482,7 +497,7 @@ app.post('/api/match', async (req, res) => {
 
             } else {
                 // ================= TASK-PROPOSING GALE-SHAPLEY =================
-                while (hasUnmatched) {
+                while (hasUnmatched && round < 10000) {
                     hasUnmatched = false;
                     for (const t of jobTasks) {
                         if (t.currentMatch === null && t.proposalIndex < t.preferences.length) {
@@ -498,6 +513,8 @@ app.post('/api/match', async (req, res) => {
                                 proposerName: t.displayName,
                                 targetId: targetWorker.user_id,
                                 targetName: targetWorker.displayName,
+                                workerId: targetWorker.user_id,
+                                taskId: t.id,
                                 job_type: job,
                                 message: `${t.displayName} proposes to ${targetWorker.displayName} (Preference #${t.proposalIndex})`
                             };
@@ -512,6 +529,8 @@ app.post('/api/match', async (req, res) => {
                                     round,
                                     type: 'accept',
                                     proposer: 'task',
+                                    proposerId: t.id,
+                                    targetId: targetWorker.user_id,
                                     workerId: targetWorker.user_id,
                                     taskId: t.id,
                                     replacedTaskId: null,
@@ -533,6 +552,8 @@ app.post('/api/match', async (req, res) => {
                                         round,
                                         type: 'replace',
                                         proposer: 'task',
+                                        proposerId: t.id,
+                                        targetId: targetWorker.user_id,
                                         workerId: targetWorker.user_id,
                                         taskId: t.id,
                                         replacedTaskId: currentT.id,
@@ -546,6 +567,8 @@ app.post('/api/match', async (req, res) => {
                                         round,
                                         type: 'reject',
                                         proposer: 'task',
+                                        proposerId: t.id,
+                                        targetId: targetWorker.user_id,
                                         workerId: targetWorker.user_id,
                                         taskId: t.id,
                                         message: `${targetWorker.displayName} prefers holding ${currentT.displayName} and rejects ${t.displayName}.`
@@ -570,6 +593,26 @@ app.post('/api/match', async (req, res) => {
                     }
                 });
             }
+
+            allProcessedTasks.push(...jobTasks);
+            allProcessedWorkers.push(...jobWorkers);
+        }
+
+        // Calculate blocking pairs to verify stability
+        const blockingPairs = [];
+        for (const w of allProcessedWorkers) {
+            for (const t of allProcessedTasks) {
+                if (w.job_type !== t.required_job_type) continue;
+                const isMatched = w.currentMatch && w.currentMatch.id === t.id && t.currentMatch && t.currentMatch.user_id === w.user_id;
+                if (isMatched) continue;
+                const wRankNew = w.preferences.findIndex(p => p.id === t.id);
+                const wRankCur = w.currentMatch ? w.preferences.findIndex(p => p.id === w.currentMatch.id) : Infinity;
+                const tRankNew = t.preferences.findIndex(p => p.user_id === w.user_id);
+                const tRankCur = t.currentMatch ? t.preferences.findIndex(p => p.user_id === t.currentMatch.user_id) : Infinity;
+                if (wRankNew !== -1 && tRankNew !== -1 && wRankNew < wRankCur && tRankNew < tRankCur) {
+                    blockingPairs.push({ worker_id: w.user_id, task_id: t.id });
+                }
+            }
         }
 
         // Apply final state changes to DB
@@ -592,6 +635,11 @@ app.post('/api/match', async (req, res) => {
                     worker_id: match.worker_id,
                     status: 'accepted_by_worker'
                 }, { onConflict: 'task_id,worker_id' });
+
+                await supabase.from('task_offers')
+                    .update({ status: 'rejected_by_worker' })
+                    .eq('task_id', match.task_id)
+                    .neq('worker_id', match.worker_id);
             } catch(e){}
         }
 
@@ -601,7 +649,8 @@ app.post('/api/match', async (req, res) => {
             mode,
             matches: finalMatches,
             steps,
-            isStable: true
+            blockingPairs,
+            isStable: blockingPairs.length === 0
         });
 
     } catch (err) {
