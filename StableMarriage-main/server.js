@@ -26,6 +26,9 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/auth/register', async (req, res) => {
     const { email, password, role, job_type } = req.body;
+    if (role === 'admin') {
+        return res.status(403).json({ error: 'Admin accounts cannot be registered from the client. New admins can only be added into the backend directly.' });
+    }
     try {
         const { data, error } = await supabase.auth.admin.createUser({
             email,

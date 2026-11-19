@@ -67,12 +67,21 @@ window.toggleWorkerProfessionField = function(role) {
     if (group) {
         group.style.display = role === 'worker' ? 'block' : 'none';
     }
+    const registerBtn = document.getElementById('btn-register');
+    if (registerBtn) {
+        registerBtn.style.display = role === 'admin' ? 'none' : '';
+    }
 };
 
 // Event Listeners
 document.getElementById('btn-login').addEventListener('click', handleLogin);
 document.getElementById('btn-register').addEventListener('click', handleRegister);
 document.getElementById('btn-logout').addEventListener('click', handleLogout);
+const roleSelectEl = document.getElementById('role-select');
+if (roleSelectEl) {
+    roleSelectEl.addEventListener('change', (e) => toggleWorkerProfessionField(e.target.value));
+    toggleWorkerProfessionField(roleSelectEl.value);
+}
 
 if (document.getElementById('btn-theme')) {
     document.getElementById('btn-theme').addEventListener('click', () => {
@@ -143,6 +152,9 @@ async function initializeApp() {
         const config = await response.json();
         
         supabaseClient = window.supabase.createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY);
+        if (sessionStorage.getItem('fixedAdminUser') === 'true') {
+            checkUserAndRoute();
+        }
         supabaseClient.auth.onAuthStateChange((event, session) => {
             if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') checkUserAndRoute();
         });
@@ -156,6 +168,26 @@ async function handleLogin() {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     authError.textContent = '';
+
+    if (email.toLowerCase() === 'admin@gmail.com') {
+        if (password === 'admin') {
+            sessionStorage.setItem('fixedAdminUser', 'true');
+            currentUser = { id: 'admin@gmail.com', email: 'admin@gmail.com' };
+            currentRole = 'admin';
+            userInfo.textContent = `User: admin (${currentRole})`;
+            try {
+                const emailRes = await fetch(API_URL + '/api/users');
+                if (emailRes.ok) adminUserEmails = await emailRes.json();
+            } catch(e){}
+            showScreen('app', currentRole);
+            initializeDashboard(currentRole);
+            return;
+        } else {
+            authError.textContent = 'Login Error: Invalid login credentials';
+            return;
+        }
+    }
+
     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) { authError.textContent = 'Login Error: ' + error.message; }
 }
@@ -163,9 +195,13 @@ async function handleLogin() {
 async function handleRegister() {
     const roleSelect = document.getElementById('role-select');
     if (roleSelect && !roleSelect.value) { authError.textContent = 'Please select a role.'; return; }
+    const role = roleSelect.value;
+    if (role === 'admin') {
+        authError.textContent = 'Admin accounts cannot be registered here. New admins must be added into the backend directly.';
+        return;
+    }
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
-    const role = roleSelect.value;
     
     let jobType = 'Plumber';
     if (role === 'worker') {
@@ -192,7 +228,10 @@ async function handleRegister() {
 }
 
 async function handleLogout() {
-    await supabaseClient.auth.signOut();
+    sessionStorage.removeItem('fixedAdminUser');
+    if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+    }
     currentUser = null;
     currentRole = null;
     if (realtimeSubscription) {
@@ -203,6 +242,21 @@ async function handleLogout() {
 }
 
 async function checkUserAndRoute() {
+    if (sessionStorage.getItem('fixedAdminUser') === 'true') {
+        currentUser = { id: 'admin@gmail.com', email: 'admin@gmail.com' };
+        currentRole = 'admin';
+        userInfo.textContent = `User: admin (${currentRole})`;
+        
+        try {
+            const emailRes = await fetch(API_URL + '/api/users');
+            if (emailRes.ok) adminUserEmails = await emailRes.json();
+        } catch(e){}
+
+        showScreen('app', currentRole);
+        initializeDashboard(currentRole);
+        return;
+    }
+
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (user) {
         currentUser = user;
@@ -230,6 +284,10 @@ async function checkUserAndRoute() {
 function showScreen(screen, role = null) {
     authScreen.style.display = screen === 'auth' ? 'block' : 'none';
     appContainer.style.display = screen === 'app' ? 'flex' : 'none';
+    if (screen === 'auth') {
+        const roleSel = document.getElementById('role-select');
+        if (roleSel) toggleWorkerProfessionField(roleSel.value);
+    }
     if (screen === 'app' && role) {
         Object.keys(dashboards).forEach(r => { if(dashboards[r]) dashboards[r].classList.add('hidden'); });
         if(dashboards[role]) dashboards[role].classList.remove('hidden');
